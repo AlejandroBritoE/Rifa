@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifa Profesional - Tabla de Stand Up Paddle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .number {
+            padding: 12px 5px;
+            text-align: center;
+            background-color: #3498db;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .number:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        .number.selected {
+            background-color: #2ecc71;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #2ecc71;
+        }
+        
+        .number.reserved {
+            background-color: #e74c3c;
+            cursor: not-allowed;
+        }
+        
+        .number.own-reservation {
+            background-color: #f39c12;
+            cursor: default;
+        }
+        
+        .buyer-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-panel {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .stats-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RIFA PROFESIONAL - TABLA DE STAND UP PADDLE 12'6"</h1>
+        
+        <div class="alert alert-info">
+            <strong>¡Participa!</strong> Cada número tiene un valor de $3,000 pesos. Selecciona tus números favoritos.
+        </div>
+        
+        <div class="buyer-form">
+            <div class="mb-3">
+                <label for="nameInput" class="form-label">Nombre completo</label>
+                <input type="text" class="form-control" id="nameInput" required>
+            </div>
+            <div class="mb-3">
+                <label for="contactInput" class="form-label">Teléfono o contacto</label>
+                <input type="text" class="form-control" id="contactInput" required>
+            </div>
+            <div class="mb-3">
+                <label for="emailInput" class="form-label">Email (opcional)</label>
+                <input type="email" class="form-control" id="emailInput">
+            </div>
+            <button id="reserveBtn" class="btn btn-primary w-100">Reservar números seleccionados</button>
+        </div>
+        
+        <div class="numbers-grid" id="numbersGrid"></div>
+        
+        <div class="selected-info card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Tus selecciones</h5>
+            </div>
+            <div class="card-body" id="selectedNumbersInfo">
+                No has seleccionado números aún
+            </div>
+        </div>
+        
+        <div class="admin-panel" id="adminPanel">
+            <h3 class="text-center mb-4">Panel de Administración</h3>
+            <div id="loginSection">
+                <div class="mb-3">
+                    <label for="adminEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="adminEmail">
+                </div>
+                <div class="mb-3">
+                    <label for="adminPassword" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" id="adminPassword">
+                </div>
+                <button id="adminLoginBtn" class="btn btn-light w-100">Ingresar</button>
+            </div>
+            
+            <div id="adminControls" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stats-card">
+                            <h5>Estadísticas</h5>
+                            <p id="statsReserved">Números reservados: 0</p>
+                            <p id="statsAvailable">Números disponibles: 200</p>
+                            <p id="statsRevenue">Recaudación total: $0</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stats-card">
+                            <h5>Acciones</h5>
+                            <div class="d-grid gap-2">
+                                <button id="exportBtn" class="btn btn-outline-light">Exportar datos</button>
+                                <button id="unblockBtn" class="btn btn-outline-light">Desbloquear número</button>
+                                <input type="number" class="form-control mt-2" id="numberToUnblock" placeholder="Número a desbloquear" min="1" max="200">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Reservas recientes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Nombre</th>
+                                    <th>Contacto</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reservationsTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-auth-compat.js"></script>
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Configuración de Firebase - Reemplaza con tus credenciales
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            databaseURL: "https://TU_PROYECTO.firebaseio.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // Variables globales
+        const pricePerNumber = 3000;
+        const totalNumbers = 200;
+        let selectedNumbers = [];
+        let currentUser = null;
+        let reservations = {};
+
+        // Elementos del DOM
+        const numbersGrid = document.getElementById('numbersGrid');
+        const reserveBtn = document.getElementById('reserveBtn');
+        const selectedNumbersInfo = document.getElementById('selectedNumbersInfo');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const adminPanel = document.getElementById('adminPanel');
+        const loginSection = document.getElementById('loginSection');
+        const adminControls = document.getElementById('adminControls');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const adminEmail = document.getElementById('adminEmail');
+        const adminPassword = document.getElementById('adminPassword');
+        const exportBtn = document.getElementById('exportBtn');
+        const unblockBtn = document.getElementById('unblockBtn');
+        const numberToUnblock = document.getElementById('numberToUnblock');
+        const statsReserved = document.getElementById('statsReserved');
+        const statsAvailable = document.getElementById('statsAvailable');
+        const statsRevenue = document.getElementById('statsRevenue');
+        const reservationsTable = document.getElementById('reservationsTable');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            createNumberGrid();
+            loadReservations();
+            setupEventListeners();
+            checkAdminSession();
+        });
+
+        // Crear la cuadrícula de números
+        function createNumberGrid() {
+            numbersGrid.innerHTML = '';
+            for (let i = 1; i <= totalNumbers; i++) {
+                const numberElement = document.createElement('div');
+                numberElement.className = 'number';
+                numberElement.textContent = i;
+                numberElement.dataset.number = i;
+                
+                numberElement.addEventListener('click', function() {
+                    toggleNumberSelection(this);
+                });
+                
+                numbersGrid.appendChild(numberElement);
+            }
+            updateUI();
+        }
+
+        // Alternar selección de número
+        function toggleNumberSelection(element) {
+            const number = parseInt(element.dataset.number);
+            
+            // No permitir modificar números reservados
+            if (element.classList.contains('reserved')) {
+                showToast('Este número ya está reservado', 'warning');
+                return;
+            }
+            
+            const index = selectedNumbers.indexOf(number);
+            
+            if (index === -1) {
+                selectedNumbers.push(number);
+                element.classList.add('selected');
+            } else {
+                selectedNumbers.splice(index, 1);
+                element.classList.remove('selected');
+            }
+            
+            updateSelectedNumbersInfo();
+        }
+
+        // Actualizar información de números seleccionados
+        function updateSelectedNumbersInfo() {
+            if (selectedNumbers.length === 0) {
+                selectedNumbersInfo.innerHTML = 'No has seleccionado números aún';
+                return;
+            }
+            
+            selectedNumbers.sort((a, b) => a - b);
+            const total = selectedNumbers.length * pricePerNumber;
+            
+            selectedNumbersInfo.innerHTML = `
+                <p><strong>Números seleccionados:</strong> ${selectedNumbers.join(', ')}</p>
+                <p><strong>Cantidad:</strong> ${selectedNumbers.length} números</p>
+                <p><strong>Total a pagar:</strong> $${total.toLocaleString('es-MX')} pesos</p>
+            `;
+        }
+
+        // Cargar reservaciones desde Firebase
+        function loadReservations() {
+            database.ref('reservations').on('value', (snapshot) => {
+                reservations = snapshot.val() || {};
+                updateUI();
+                updateStats();
+                updateReservationsTable();
+            });
+        }
+
+        // Actualizar la interfaz de usuario con las reservaciones
+        function updateUI() {
+            const numberElements = document.querySelectorAll('.number');
+            
+            numberElements.forEach(element => {
+                const number = parseInt(element.dataset.number);
+                element.classList.remove('reserved', 'own-reservation');
+                
+                if (reservations[number]) {
+                    element.classList.add('reserved');
+                    
+                    // Marcar números reservados por el usuario actual (si estuviera implementado)
+                    // if (reservations[number].userId === currentUser?.uid) {
+                    //     element.classList.add('own-reservation');
+                    // }
+                }
+            });
+        }
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Reservar números
+            reserveBtn.addEventListener('click', reserveNumbers);
+            
+           // Actualizar estado
+            refreshBtn.addEventListener('click', loadReservations);
+            
+            // Login de administrador
+            adminLoginBtn.addEventListener('click', adminLogin);
+            
+            // Acciones de administrador
+            exportBtn.addEventListener('click', exportData);
+            unblockBtn.addEventListener('click', unblockNumber);
+        }
+
+        // Reservar números seleccionados
+        async function reserveNumbers() {
+            const name = document.getElementById('nameInput').value.trim();
+            const contact = document.getElementById('contactInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            
+            if (!name || !contact) {
+                showToast('Por favor completa tu nombre y contacto', 'warning');
+                return;
+            }
+            
+            if (selectedNumbers.length === 0) {
+                showToast('Por favor selecciona al menos un número', 'warning');
+                return;
+            }
+            
+            try {
+                // Verificar que los números sigan disponibles
+                const unavailableNumbers = selectedNumbers.filter(num => reservations[num]);
+                if (unavailableNumbers.length > 0) {
+                    showToast(`Algunos números ya no están disponibles: ${unavailableNumbers.join(', ')}`, 'danger');
+                    selectedNumbers = selectedNumbers.filter(num => !unavailableNumbers.includes(num));
+                    updateUI();
+                    updateSelectedNumbersInfo();
+                    return;
+                }
+                
+                // Crear objeto de reserva
+                const reservationData = {
+                    name: name,
+                    contact: contact,
+                    email: email || null,
+                    date: new Date().toISOString(),
+                    price: pricePerNumber
+                };
+                
+                // Guardar en Firebase
+                const updates = {};
+                selectedNumbers.forEach(num => {
+                    updates[`reservations/${num}`] = reservationData;
+                });
+                
+                await database.ref().update(updates);
+                
+                // Mostrar confirmación
+                const total = selectedNumbers.length * pricePerNumber;
+                showToast(`¡Reserva exitosa! Total a pagar: $${total.toLocaleString('es-MX')}`, 'success');
+                
+                // Limpiar selección
+                document.getElementById('nameInput').value = '';
+                document.getElementById('contactInput').value = '';
+                document.getElementById('emailInput').value = '';
+                selectedNumbers = [];
+                updateSelectedNumbersInfo();
+                
+            } catch (error) {
+                console.error('Error al reservar:', error);
+                showToast('Error al realizar la reserva', 'danger');
+            }
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            const reservedCount = Object.keys(reservations).length;
+            const availableCount = totalNumbers - reservedCount;
+            const revenue = reservedCount * pricePerNumber;
+            
+            statsReserved.textContent = `Números reservados: ${reservedCount}`;
+            statsAvailable.textContent = `Números disponibles: ${availableCount}`;
+            statsRevenue.textContent = `Recaudación total: $${revenue.toLocaleString('es-MX')}`;
+        }
+
+        // Actualizar tabla de reservaciones
+        function updateReservationsTable() {
+            reservationsTable.innerHTML = '';
+            
+            // Ordenar por número
+            const sortedNumbers = Object.keys(reservations).sort((a, b) => a - b);
+            
+            sortedNumbers.slice(0, 10).forEach(num => {
+                const reservation = reservations[num];
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${num}</td>
+                    <td>${reservation.name}</td>
+                    <td>${reservation.contact}</td>
+                    <td>${new Date(reservation.date).toLocaleDateString()}</td>
+                `;
+                
+                reservationsTable.appendChild(row);
+            });
+        }
+
+        // Exportar datos
+        function exportData() {
+            let csv = 'Número,Nombre,Contacto,Email,Fecha,Valor\n';
+            
+            // Ordenar por número
+            const sortedNumbers = Object.keys(reservations).sort((a, b) => a - b);
+            
+            sortedNumbers.forEach(num => {
+                const reservation = reservations[num];
+                csv += `"${num}","${reservation.name}","${reservation.contact}","${reservation.email || ''}","${reservation.date}","${reservation.price}"\n`;
+            });
+            
+            // Crear archivo CSV
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `reservas_rifa_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('Datos exportados correctamente', 'success');
+        }
+
+        // Desbloquear número
+        async function unblockNumber() {
+            const number = parseInt(numberToUnblock.value);
+            
+            if (isNaN(number) || number < 1 || number > totalNumbers) {
+                showToast('Por favor ingresa un número válido (1-200)', 'warning');
+                return;
+            }
+            
+            if (!reservations[number]) {
+                showToast('Este número no está reservado', 'warning');
+                return;
+            }
+            
+            try {
+                await database.ref(`reservations/${number}`).remove();
+                numberToUnblock.value = '';
+                showToast(`Número ${number} desbloqueado correctamente`, 'success');
+            } catch (error) {
+                console.error('Error al desbloquear:', error);
+                showToast('Error al desbloquear el número', 'danger');
+            }
+        }
+
+        // Autenticación de administrador
+        async function adminLogin() {
+            const email = adminEmail.value.trim();
+            const password = adminPassword.value.trim();
+            
+            if (!email || !password) {
+                showToast('Por favor ingresa email y contraseña', 'warning');
+                return;
+            }
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showToast('Ingreso exitoso', 'success');
+            } catch (error) {
+                console.error('Error de autenticación:', error);
+                showToast('Credenciales incorrectas', 'danger');
+            }
+        }
+
+        // Verificar sesión de administrador
+        function checkAdminSession() {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    loginSection.style.display = 'none';
+                    adminControls.style.display = 'block';
+                } else {
+                    currentUser = null;
+                    loginSection.style.display = 'block';
+                    adminControls.style.display = 'none';
+                }
+            });
+        }
+
+        // Mostrar notificación toast
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
+            toast.role = 'alert';
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Eliminar después de 5 segundos
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toastContainer.removeChild(toast), 300);
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
